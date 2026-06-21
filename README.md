@@ -25,14 +25,15 @@ Backend do sistema de gestão de pizzaria desenvolvido com Node.js, Express 5, P
 
 ## Rotas da API
 
-| Método | Rota              | Auth | Admin | Descrição                  |
-| ------ | ----------------- | ---- | ----- | -------------------------- |
-| POST   | `/api/users`      | Não  | Não   | Criar novo usuário         |
-| POST   | `/api/session`    | Não  | Não   | Autenticar (login/JWT)     |
-| GET    | `/api/me`         | Sim  | Não   | Dados do usuário logado    |
-| GET    | `/api/categories` | Sim  | Não   | Listar categorias          |
-| POST   | `/api/categories` | Sim  | Sim   | Criar categoria            |
-| POST   | `/api/products`   | Sim  | Sim   | Criar produto (com imagem) |
+| Método | Rota              | Auth | Admin | Descrição                         |
+| ------ | ----------------- | ---- | ----- | --------------------------------- |
+| POST   | `/api/users`      | Não  | Não   | Criar novo usuário                |
+| POST   | `/api/session`    | Não  | Não   | Autenticar (login/JWT)            |
+| GET    | `/api/me`         | Sim  | Não   | Dados do usuário logado           |
+| GET    | `/api/categories` | Sim  | Não   | Listar categorias                 |
+| POST   | `/api/categories` | Sim  | Sim   | Criar categoria                   |
+| GET    | `/api/products`   | Sim  | Não   | Listar produtos (query: disabled) |
+| POST   | `/api/products`   | Sim  | Sim   | Criar produto (com imagem)        |
 
 ## Como usar
 

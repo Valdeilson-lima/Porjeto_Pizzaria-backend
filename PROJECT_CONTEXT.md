@@ -48,7 +48,7 @@
 
 ### 3.1 Padrão Arquitetural
 
-Arquitetura em camadas (Controller → Service → Repository → Prisma/DB), seguindo o padrão de responsabilidade única.
+Arquitetura em camadas (Controller → Service → Prisma/DB), seguindo o padrão de responsabilidade única.
 
 ### 3.2 Fluxo de Requisições
 
@@ -65,8 +65,6 @@ Controller
     ↓
 Service
     ↓
-Repository
-    ↓
 Prisma Client (lib/prisma.ts)
     ↓
 PostgreSQL
@@ -74,14 +72,14 @@ PostgreSQL
 
 ### 3.3 Responsabilidades de cada camada
 
-| Camada           | Diretório              | Responsabilidade                                                                                    |
-| ---------------- | ---------------------- | --------------------------------------------------------------------------------------------------- |
-| **Routes**       | `src/routes.ts`        | Definir endpoints HTTP, associar middlewares e controllers                                          |
-| **Controllers**  | `src/controllers/**/`  | Receber e responder requisições HTTP. Extrair dados de `req.body/params/query` e delegar ao service |
-| **Services**     | `src/services/**/`     | Conter todas as regras de negócio e delegar consultas ao repository                                 |
-| **Repositories** | `src/repositories/**/` | Executar consultas ao banco de dados via Prisma                                                     |
-| **Middlewares**  | `src/middlewares/`     | Interceptar requisições para validação, autenticação e autorização                                  |
-| **Schemas**      | `src/schemas/`         | Definir schemas de validação com Zod                                                                |
+| Camada          | Diretório             | Responsabilidade                                                                                    |
+| --------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
+| **Routes**      | `src/routes.ts`       | Definir endpoints HTTP, associar middlewares e controllers                                          |
+| **Controllers** | `src/controllers/**/` | Receber e responder requisições HTTP. Extrair dados de `req.body/params/query` e delegar ao service |
+| **Services**    | `src/services/**/`    | Conter todas as regras de negócio e delegar consultas ao repository                                 |
+| **Services**    | `src/services/**/`    | Conter regras de negócio e consultas ao banco via Prisma                                            |
+| **Middlewares** | `src/middlewares/`    | Interceptar requisições para validação, autenticação e autorização                                  |
+| **Schemas**     | `src/schemas/`        | Definir schemas de validação com Zod                                                                |
 
 ### 3.4 Regras por Camada
 
@@ -105,19 +103,8 @@ PostgreSQL
 
 #### Services (`src/services/**/*`)
 
-- **Responsabilidade:** Conter todas as regras de negócio, validações de domínio e delegar consultas ao repository
-- **Integrações externas:** bcryptjs (hash de senha) e Cloudinary (upload de imagens) via service; banco de dados via repository
-
-#### Repositories (`src/repositories/**/*`)
-
-- **Responsabilidade:** Executar consultas ao banco de dados via Prisma, aplicar filtros e transformar dados para o formato da API
-- **O que podem fazer:**
-  - Importar e usar o PrismaClient
-  - Aplicar filtros, ordenação e seleção de campos
-  - Mapear nomes de campos do banco para o formato de resposta da API
-- **O que NÃO podem fazer:**
-  - Conter regras de negócio
-  - Lançar erros de domínio (apenas erros técnicos)
+- **Responsabilidade:** Conter todas as regras de negócio, validações de domínio e consultas ao banco de dados via Prisma
+- **Integrações externas:** bcryptjs (hash de senha) e Cloudinary (upload de imagens) via service; banco de dados diretamente via Prisma
 
 #### Middlewares (`src/middlewares/`)
 
@@ -149,16 +136,14 @@ PostgreSQL
 │   │   │   ├── createCategoryController.ts
 │   │   │   └── listCategoryController.ts
 │   │   └── product/
-│   │       └── createProductController.ts
+│   │       ├── createProductController.ts
+│   │       └── listProductController.ts
 │   ├── config/
 │   │   ├── cloudinary.ts             # Configuração do Cloudinary
 │   │   └── multer.ts                 # Configuração do Multer (memoryStorage)
 │   ├── generated/prisma/          # Cliente Prisma gerado (gitignored)
 │   ├── lib/
 │   │   └── prisma.ts              # Inicialização do PrismaClient com adapter-pg
-│   ├── repositories/
-│   │   └── product/
-│   │       └── listProductRepository.ts
 │   ├── middlewares/
 │   │   ├── isAuthenticated.ts     # Autenticação JWT
 │   │   ├── isAdmin.ts             # Autorização ADMIN
@@ -176,7 +161,8 @@ PostgreSQL
 │   │   │   ├── createCategoryService.ts
 │   │   │   └── listCategoryService.ts
 │   │   └── product/
-│   │       └── createProductService.ts
+│   │       ├── createProductService.ts
+│   │       └── listProductService.ts
 │   ├── routes.ts                  # Definição de todas as rotas
 │   └── server.ts                  # Entry point do servidor Express
 ├── .agents/                       # Habilidades de agentes de IA (opencode)
@@ -197,19 +183,18 @@ PostgreSQL
 
 ### Responsabilidade de cada diretório
 
-| Diretório           | Responsabilidade                                        |
-| ------------------- | ------------------------------------------------------- |
-| `src/controllers/`  | Classes que manipulam requisições/respostas HTTP        |
-| `src/services/`     | Classes com regras de negócio e delegação ao repository |
-| `src/repositories/` | Classes de acesso ao banco de dados via Prisma          |
-| `src/middlewares/`  | Funções de middleware (auth, validação, autorização)    |
-| `src/schemas/`      | Schemas Zod para validação de dados de entrada          |
-| `src/config/`       | Configurações de serviços externos (Cloudinary, Multer) |
-| `src/lib/`          | Inicialização de bibliotecas (Prisma)                   |
-| `src/@types/`       | Declarações de tipos e augmentações                     |
-| `src/generated/`    | Código gerado pelo Prisma (não versionado)              |
-| `prisma/`           | Schema, migrations e configuração do Prisma             |
-| `.husky/`           | Hooks do Git gerenciados pelo Husky                     |
+| Diretório          | Responsabilidade                                           |
+| ------------------ | ---------------------------------------------------------- |
+| `src/controllers/` | Classes que manipulam requisições/respostas HTTP           |
+| `src/services/`    | Classes com regras de negócio e acesso ao banco via Prisma |
+| `src/middlewares/` | Funções de middleware (auth, validação, autorização)       |
+| `src/schemas/`     | Schemas Zod para validação de dados de entrada             |
+| `src/config/`      | Configurações de serviços externos (Cloudinary, Multer)    |
+| `src/lib/`         | Inicialização de bibliotecas (Prisma)                      |
+| `src/@types/`      | Declarações de tipos e augmentações                        |
+| `src/generated/`   | Código gerado pelo Prisma (não versionado)                 |
+| `prisma/`          | Schema, migrations e configuração do Prisma                |
+| `.husky/`          | Hooks do Git gerenciados pelo Husky                        |
 
 ---
 
@@ -263,7 +248,7 @@ PostgreSQL
 | `description` | `String`        | —                      | Descrição do produto       |
 | `price`       | `Int`           | —                      | Preço em centavos          |
 | `banner`      | `String`        | —                      | URL da imagem/banner       |
-| `disable`     | `Boolean`       | `@default(false)`      | Produto ativo/desativado   |
+| `disabled`    | `Boolean`       | `@default(false)`      | Produto ativo/desativado   |
 | `categoryId`  | `String`        | FK → `categories.id`   | Categoria do produto       |
 | `Items`       | `Item[]`        | Relação 1:N            | Itens de pedido            |
 | `createdAt`   | `DateTime`      | `@default(now())`      | Data de criação            |
@@ -338,7 +323,7 @@ Product
 ├── description: String
 ├── price: Int (centavos)
 ├── banner: String
-├── disable: Boolean (default: false)
+├── disabled: Boolean (default: false)
 ├── categoryId: String (FK → categories.id)
 ├── Items: Item[] (1:N)
 ├── createdAt: DateTime
@@ -415,9 +400,9 @@ Relações:
 
 #### `listProductsSchema` (`src/schemas/productSchema.ts`)
 
-| Campo            | Regra                               | Onde é usado        |
-| ---------------- | ----------------------------------- | ------------------- |
-| `query.disabled` | `enum(["true", "false"])`, opcional | `GET /api/products` |
+| Campo            | Regra                   | Onde é usado        |
+| ---------------- | ----------------------- | ------------------- |
+| `query.disabled` | `z.string().optional()` | `GET /api/products` |
 
 ---
 
@@ -684,6 +669,7 @@ Authorization: Bearer <token>
   "description": "Pizza de calabresa com mussarela",
   "price": 3500,
   "banner": "https://res.cloudinary.com/.../products/...jpg",
+  "disabled": false,
   "categoryId": "uuid",
   "createdAt": "2026-06-21T...Z"
 }
@@ -706,7 +692,6 @@ Authorization: Bearer <token>
 | ---------------- | ------------------------------------ |
 | **Controller**   | `ListProductController`              |
 | **Service**      | `ListProductService`                 |
-| **Repository**   | `ListProductRepository`              |
 | **Autenticação** | `isAuthenticated`                    |
 | **Validação**    | `validateSchema(listProductsSchema)` |
 
@@ -733,7 +718,6 @@ Authorization: Bearer <token>
 **Erros possíveis:**
 | Status | Condição |
 |--------|----------|
-| `400` | `disabled` inválido (não é `"true"` ou `"false"`) |
 | `401` | Token ausente ou inválido |
 
 ---
@@ -872,13 +856,12 @@ Authorization: Bearer <token>
 2. Middleware isAuthenticated verifica e decodifica o token
 3. Middleware validateSchema(listProductsSchema) valida o query param disabled
 4. ListProductController extrai req.query.disabled
-5. ListProductService.execute(disabled) é chamado
-6. Service define disabled=false se o parâmetro não foi enviado
-7. Service chama ListProductRepository.execute(disabledFilter)
-8. Repository consulta o banco com filtro where: { disable: disabledFilter }
-9. Repository ordena por nome (orderBy: { name: "asc" })
-10. Repository retorna array com { id, name, price, disabled, createdAt }
-11. Controller responde com 200
+5. ListProductService.execute({ disabled }) é chamado
+6. Service converte disabled string para boolean (default false)
+7. Service consulta o banco com where: { disabled } (prisma.product.findMany)
+8. Ordena por nome (orderBy: { name: "asc" })
+9. Retorna array com { id, name, price, description, banner, disabled, categoryId, createdAt, category }
+10. Controller responde com 200
 ```
 
 ### 12.7 Criar Produto (Admin)
@@ -912,7 +895,6 @@ Authorization: Bearer <token>
 | **Arquivos de service**    | PascalCase + sufixo `Service`    | `createUserService.ts`                                   |
 | **Arquivos de middleware** | camelCase                        | `isAuthenticated.ts`                                     |
 | **Arquivos de schema**     | camelCase + sufixo `Schema`      | `userSchema.ts`, `categorySchema.ts`, `productSchema.ts` |
-| **Arquivos de repository** | PascalCase + sufixo `Repository` | `listProductRepository.ts`                               |
 | **Classes**                | PascalCase                       | `CreateUserController`                                   |
 | **Métodos**                | camelCase                        | `execute()`, `handle()`                                  |
 | **Pastas**                 | camelCase                        | `controllers/user/`, `services/category/`                |
@@ -991,18 +973,18 @@ Authorization: Bearer <token>
 
 ### 14.2 Melhorias Sugeridas
 
-| Sugestão                                                | Motivação                                                                        |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| **Implementar CRUD completo**                           | Order e Item possuem modelos no banco mas não têm rotas, controllers ou services |
-| **Adicionar validação Zod nos schemas de query/params** | Atualmente só `body` é validado                                                  |
-| **Adicionar logging estruturado**                       | Winston ou Pino para logs em produção                                            |
-| **Adicionar testes**                                    | Testes unitários (services) e de integração (endpoints)                          |
-| **Adicionar Docker/docker-compose**                     | Facilitar setup do ambiente (PostgreSQL + app)                                   |
-| **Adicionar rate limiting**                             | Prevenir abuso nos endpoints de autenticação                                     |
-| **Adicionar refresh token**                             | Fluxo de refresh para tokens JWT expirados                                       |
-| **Adicionar soft delete**                               | Para produtos e categorias (campo `deletedAt`)                                   |
-| **Migrar de CommonJS para ESM**                         | Para compatibilidade com EcmaScript modules modernos                             |
-| **Centralizar mensagens de erro**                       | Arquivo de constantes/arquivo i18n para mensagens                                |
+| Sugestão                             | Motivação                                                                        |
+| ------------------------------------ | -------------------------------------------------------------------------------- |
+| **Implementar CRUD completo**        | Order e Item possuem modelos no banco mas não têm rotas, controllers ou services |
+| **Implementar camada de repository** | Serviços acessam Prisma diretamente; repository adicionaria separação            |
+| **Adicionar logging estruturado**    | Winston ou Pino para logs em produção                                            |
+| **Adicionar testes**                 | Testes unitários (services) e de integração (endpoints)                          |
+| **Adicionar Docker/docker-compose**  | Facilitar setup do ambiente (PostgreSQL + app)                                   |
+| **Adicionar rate limiting**          | Prevenir abuso nos endpoints de autenticação                                     |
+| **Adicionar refresh token**          | Fluxo de refresh para tokens JWT expirados                                       |
+| **Adicionar soft delete**            | Para produtos e categorias (campo `deletedAt`)                                   |
+| **Migrar de CommonJS para ESM**      | Para compatibilidade com EcmaScript modules modernos                             |
+| **Centralizar mensagens de erro**    | Arquivo de constantes/arquivo i18n para mensagens                                |
 
 ### 14.3 Pontos de Atenção
 

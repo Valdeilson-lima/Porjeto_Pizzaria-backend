@@ -13,6 +13,6 @@ export const createProductSchema = z.object({
 
 export const listProductsSchema = z.object({
   query: z.object({
-    disabled: z.enum(["true", "false"]).optional(),
+    disabled: z.string().optional(),
   }),
 });

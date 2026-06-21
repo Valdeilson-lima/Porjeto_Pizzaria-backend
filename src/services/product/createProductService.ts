@@ -71,6 +71,7 @@ class CreateProductService {
         id: true,
         name: true,
         description: true,
+        disabled: true,
         price: true,
         banner: true,
         categoryId: true,
