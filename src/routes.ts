@@ -3,6 +3,8 @@ import { CreateUserController } from "./controllers/user/createUserController";
 import { AuthUserController } from "./controllers/user/authUsercontroller";
 import { validateSchema } from "./middlewares/validateSchema";
 import { authUserSchema, createUserSchema } from "./schemas/userSchema";
+import { DetailUserController } from "./controllers/user/detailUserController";
+import { isAuthenticated } from "./middlewares/isAuthenticated";
 
 const router = Router();
 
@@ -17,5 +19,7 @@ router.post(
   validateSchema(authUserSchema),
   new AuthUserController().handle
 );
+
+router.get("/me", isAuthenticated, new DetailUserController().handle);
 
 export default router;
