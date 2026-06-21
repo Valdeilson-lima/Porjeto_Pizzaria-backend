@@ -8,6 +8,8 @@ Backend do sistema de gestão de pizzaria desenvolvido com Node.js, Express 5, P
 - **Framework:** Express 5
 - **ORM:** Prisma 7 + PostgreSQL (adapter-pg)
 - **Autenticação:** JWT + bcryptjs
+- **Upload:** Multer (memoryStorage)
+- **Cloud Storage:** Cloudinary
 - **Validação:** Zod 4
 - **Dev:** tsx (watch mode), Husky + lint-staged + Prettier + commitlint
 
@@ -23,13 +25,14 @@ Backend do sistema de gestão de pizzaria desenvolvido com Node.js, Express 5, P
 
 ## Rotas da API
 
-| Método | Rota              | Auth | Admin | Descrição               |
-| ------ | ----------------- | ---- | ----- | ----------------------- |
-| POST   | `/api/users`      | Não  | Não   | Criar novo usuário      |
-| POST   | `/api/session`    | Não  | Não   | Autenticar (login/JWT)  |
-| GET    | `/api/me`         | Sim  | Não   | Dados do usuário logado |
-| GET    | `/api/categories` | Sim  | Não   | Listar categorias       |
-| POST   | `/api/categories` | Sim  | Sim   | Criar categoria         |
+| Método | Rota              | Auth | Admin | Descrição                  |
+| ------ | ----------------- | ---- | ----- | -------------------------- |
+| POST   | `/api/users`      | Não  | Não   | Criar novo usuário         |
+| POST   | `/api/session`    | Não  | Não   | Autenticar (login/JWT)     |
+| GET    | `/api/me`         | Sim  | Não   | Dados do usuário logado    |
+| GET    | `/api/categories` | Sim  | Não   | Listar categorias          |
+| POST   | `/api/categories` | Sim  | Sim   | Criar categoria            |
+| POST   | `/api/products`   | Sim  | Sim   | Criar produto (com imagem) |
 
 ## Como usar
 
@@ -60,6 +63,9 @@ npm run dev
 PORT=3333
 DATABASE_URL="postgresql://user:password@localhost:5432/DB_Pizza?schema=public"
 JWT_SECRET="your-secret-key"
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="your-api-key"
+CLOUDINARY_API_SECRET="your-api-secret"
 ```
 
 ## Estrutura do Projeto
@@ -69,12 +75,15 @@ src/
 ├── @types/express/       # Tipos estendidos do Express
 ├── controllers/          # Controllers (entrada HTTP)
 │   ├── user/
-│   └── category/
+│   ├── category/
+│   └── product/
+├── config/                # Configurações (Cloudinary, Multer)
 ├── middlewares/           # isAuthenticated, isAdmin, validateSchema
 ├── schemas/               # Schemas de validação Zod
 ├── services/              # Regras de negócio
 │   ├── user/
-│   └── category/
+│   ├── category/
+│   └── product/
 ├── lib/prisma.ts          # Conexão com banco
 ├── routes.ts              # Definição de rotas
 └── server.ts              # Entry point

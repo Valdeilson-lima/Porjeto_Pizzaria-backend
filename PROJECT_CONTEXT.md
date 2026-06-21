@@ -35,6 +35,8 @@
 | **CORS**                  | cors               | ^2.8.6  | Controle de acesso HTTP                                  |
 | **Dev Server**            | tsx                | ^4.22.4 | Execução TypeScript com hot-reload                       |
 | **Transpilador**          | TypeScript (tsc)   | ^6.0.3  | Compilação TS → JS                                       |
+| **Upload de imagens**     | multer             | ^2.2.0  | Recebimento e validação de arquivos (form-data)          |
+| **Cloud Storage**         | cloudinary         | ^2.10.0 | Upload e armazenamento de imagens em nuvem               |
 | **Linter/Formatter**      | Prettier           | ^3.8.4  | Formatação automática de código                          |
 | **Git Hooks**             | Husky              | ^9.1.7  | Gatilhos para hooks do Git                               |
 | **Staged Linter**         | lint-staged        | ^17.0.7 | Executa linters apenas em arquivos staged                |
@@ -57,7 +59,7 @@ Express (server.ts)
     ↓
 Router (routes.ts)
     ↓
-Middleware(s) [validateSchema → isAuthenticated → isAdmin]
+Middleware(s) [multer → validateSchema → isAuthenticated → isAdmin]
     ↓
 Controller
     ↓
@@ -101,7 +103,7 @@ PostgreSQL
 #### Services (`src/services/**/*`)
 
 - **Responsabilidade:** Conter todas as regras de negócio, validações de domínio e acesso ao banco via Prisma
-- **Integrações externas:** Apenas o banco de dados (Prisma) e bcryptjs (hash de senha)
+- **Integrações externas:** Banco de dados (Prisma), bcryptjs (hash de senha) e Cloudinary (upload de imagens)
 
 #### Middlewares (`src/middlewares/`)
 
@@ -129,9 +131,14 @@ PostgreSQL
 │   │   │   ├── createUserController.ts
 │   │   │   ├── authUserController.ts
 │   │   │   └── detailUserController.ts
-│   │   └── category/
-│   │       ├── createCategoryController.ts
-│   │       └── listCategoryController.ts
+│   │   ├── category/
+│   │   │   ├── createCategoryController.ts
+│   │   │   └── listCategoryController.ts
+│   │   └── product/
+│   │       └── createProductController.ts
+│   ├── config/
+│   │   ├── cloudinary.ts             # Configuração do Cloudinary
+│   │   └── multer.ts                 # Configuração do Multer (memoryStorage)
 │   ├── generated/prisma/          # Cliente Prisma gerado (gitignored)
 │   ├── lib/
 │   │   └── prisma.ts              # Inicialização do PrismaClient com adapter-pg
@@ -141,15 +148,18 @@ PostgreSQL
 │   │   └── validateSchema.ts      # Validação Zod
 │   ├── schemas/
 │   │   ├── userSchema.ts          # Schemas de usuário (criação + login)
-│   │   └── categorySchema.ts      # Schema de criação de categoria
+│   │   ├── categorySchema.ts      # Schema de criação de categoria
+│   │   └── productSchema.ts       # Schema de criação de produto
 │   ├── services/
 │   │   ├── user/
 │   │   │   ├── createUserService.ts
 │   │   │   ├── authUserService.ts
 │   │   │   └── detailUserService.ts
-│   │   └── category/
-│   │       ├── createCategoryService.ts
-│   │       └── listCategoryService.ts
+│   │   ├── category/
+│   │   │   ├── createCategoryService.ts
+│   │   │   └── listCategoryService.ts
+│   │   └── product/
+│   │       └── createProductService.ts
 │   ├── routes.ts                  # Definição de todas as rotas
 │   └── server.ts                  # Entry point do servidor Express
 ├── .agents/                       # Habilidades de agentes de IA (opencode)
@@ -170,17 +180,18 @@ PostgreSQL
 
 ### Responsabilidade de cada diretório
 
-| Diretório          | Responsabilidade                                     |
-| ------------------ | ---------------------------------------------------- |
-| `src/controllers/` | Classes que manipulam requisições/respostas HTTP     |
-| `src/services/`    | Classes com regras de negócio e acesso ao banco      |
-| `src/middlewares/` | Funções de middleware (auth, validação, autorização) |
-| `src/schemas/`     | Schemas Zod para validação de dados de entrada       |
-| `src/lib/`         | Inicialização de bibliotecas (Prisma)                |
-| `src/@types/`      | Declarações de tipos e augmentações                  |
-| `src/generated/`   | Código gerado pelo Prisma (não versionado)           |
-| `prisma/`          | Schema, migrations e configuração do Prisma          |
-| `.husky/`          | Hooks do Git gerenciados pelo Husky                  |
+| Diretório          | Responsabilidade                                        |
+| ------------------ | ------------------------------------------------------- |
+| `src/controllers/` | Classes que manipulam requisições/respostas HTTP        |
+| `src/services/`    | Classes com regras de negócio e acesso ao banco         |
+| `src/middlewares/` | Funções de middleware (auth, validação, autorização)    |
+| `src/schemas/`     | Schemas Zod para validação de dados de entrada          |
+| `src/config/`      | Configurações de serviços externos (Cloudinary, Multer) |
+| `src/lib/`         | Inicialização de bibliotecas (Prisma)                   |
+| `src/@types/`      | Declarações de tipos e augmentações                     |
+| `src/generated/`   | Código gerado pelo Prisma (não versionado)              |
+| `prisma/`          | Schema, migrations e configuração do Prisma             |
+| `.husky/`          | Hooks do Git gerenciados pelo Husky                     |
 
 ---
 
@@ -374,6 +385,15 @@ Relações:
 | Campo       | Regra                         | Onde é usado           |
 | ----------- | ----------------------------- | ---------------------- |
 | `body.name` | `string`, mínimo 3 caracteres | `POST /api/categories` |
+
+#### `createProductSchema` (`src/schemas/productSchema.ts`)
+
+| Campo              | Regra                        | Onde é usado         |
+| ------------------ | ---------------------------- | -------------------- |
+| `body.name`        | `string`, mínimo 1 caractere | `POST /api/products` |
+| `body.price`       | `string` (regex `/^\d+$/`)   | `POST /api/products` |
+| `body.description` | `string`, mínimo 1 caractere | `POST /api/products` |
+| `body.categoryId`  | `string` (UUID)              | `POST /api/products` |
 
 ---
 
@@ -610,22 +630,72 @@ Authorization: Bearer <token>
 
 ---
 
+### 9.6 `POST /api/products` — Criar produto
+
+| Atributo         | Valor                                 |
+| ---------------- | ------------------------------------- |
+| **Controller**   | `CreateProductController`             |
+| **Service**      | `CreateProductService`                |
+| **Autenticação** | `isAuthenticated`                     |
+| **Autorização**  | `isAdmin`                             |
+| **Upload**       | `multer` (memoryStorage, limite 5MB)  |
+| **Validação**    | `validateSchema(createProductSchema)` |
+
+**Request:** `multipart/form-data`
+
+| Campo         | Tipo     | Descrição                                 |
+| ------------- | -------- | ----------------------------------------- |
+| `name`        | `string` | Nome do produto                           |
+| `price`       | `string` | Preço em centavos                         |
+| `description` | `string` | Descrição do produto                      |
+| `categoryId`  | `string` | UUID da categoria                         |
+| `file`        | `file`   | Imagem do produto (JPEG/PNG/GIF, max 5MB) |
+
+**Response (201):**
+
+```json
+{
+  "id": "uuid",
+  "name": "Pizza Calabresa",
+  "description": "Pizza de calabresa com mussarela",
+  "price": 3500,
+  "banner": "https://res.cloudinary.com/.../products/...jpg",
+  "categoryId": "uuid",
+  "createdAt": "2026-06-21T...Z"
+}
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | Dados inválidos (validação Zod) |
+| `400` | Arquivo não enviado |
+| `400` | Tipo de arquivo não permitido |
+| `400` | Categoria não encontrada |
+| `400` | Erro ao fazer upload da imagem |
+| `401` | Token ausente ou inválido |
+| `403` | Usuário não é ADMIN |
+
+---
+
 ## 10. Bibliotecas e Dependências
 
 ### Dependências de Produção
 
-| Nome                 | Versão  | Finalidade                       | Utilização                                      |
-| -------------------- | ------- | -------------------------------- | ----------------------------------------------- |
-| `express`            | ^5.2.1  | Framework HTTP                   | `src/server.ts`, roteamento, middlewares        |
-| `cors`               | ^2.8.6  | Middleware de CORS               | `src/server.ts`                                 |
-| `dotenv`             | ^17.4.2 | Carregar variáveis de ambiente   | `src/server.ts`, `src/lib/prisma.ts`            |
-| `@prisma/client`     | ^7.8.0  | ORM — consultas ao banco         | Todos os services                               |
-| `@prisma/adapter-pg` | ^7.8.0  | Adaptador Prisma para PostgreSQL | `src/lib/prisma.ts`                             |
-| `pg`                 | ^8.13.3 | Driver PostgreSQL nativo         | Via adapter-pg                                  |
-| `jsonwebtoken`       | ^9.0.3  | JWT sign/verify                  | `isAuthenticated` middleware, `authUserService` |
-| `bcryptjs`           | ^3.0.3  | Hash e comparação de senhas      | `createUserService`, `authUserService`          |
-| `zod`                | ^4.4.3  | Validação de schemas             | `validateSchema` middleware, schemas            |
-| `tsx`                | ^4.22.4 | Execução TypeScript com watch    | `npm run dev`                                   |
+| Nome                 | Versão  | Finalidade                       | Utilização                                         |
+| -------------------- | ------- | -------------------------------- | -------------------------------------------------- |
+| `express`            | ^5.2.1  | Framework HTTP                   | `src/server.ts`, roteamento, middlewares           |
+| `cors`               | ^2.8.6  | Middleware de CORS               | `src/server.ts`                                    |
+| `dotenv`             | ^17.4.2 | Carregar variáveis de ambiente   | `src/server.ts`, `src/lib/prisma.ts`               |
+| `@prisma/client`     | ^7.8.0  | ORM — consultas ao banco         | Todos os services                                  |
+| `@prisma/adapter-pg` | ^7.8.0  | Adaptador Prisma para PostgreSQL | `src/lib/prisma.ts`                                |
+| `pg`                 | ^8.13.3 | Driver PostgreSQL nativo         | Via adapter-pg                                     |
+| `jsonwebtoken`       | ^9.0.3  | JWT sign/verify                  | `isAuthenticated` middleware, `authUserService`    |
+| `bcryptjs`           | ^3.0.3  | Hash e comparação de senhas      | `createUserService`, `authUserService`             |
+| `zod`                | ^4.4.3  | Validação de schemas             | `validateSchema` middleware, schemas               |
+| `tsx`                | ^4.22.4 | Execução TypeScript com watch    | `npm run dev`                                      |
+| `multer`             | ^2.2.0  | Upload de arquivos (multipart)   | `src/config/multer.ts`, rotas                      |
+| `cloudinary`         | ^2.10.0 | Upload de imagens para nuvem     | `src/config/cloudinary.ts`, `createProductService` |
 
 ### Dependências de Desenvolvimento
 
@@ -643,16 +713,20 @@ Authorization: Bearer <token>
 | `@types/cors`                     | ^2.8.19  | Tipos do cors                        | `src/server.ts`                          |
 | `@types/node`                     | ^25.9.3  | Tipos do Node.js                     | Projeto todo                             |
 | `@types/pg`                       | ^8.11.11 | Tipos do pg                          | Via adapter-pg                           |
+| `@types/multer`                   | ^2.1.0   | Tipos do multer                      | Controllers com upload                   |
 
 ---
 
 ## 11. Configurações de Ambiente
 
-| Variável       | Finalidade                                      | Valor esperado (exemplo)                                           |
-| -------------- | ----------------------------------------------- | ------------------------------------------------------------------ |
-| `PORT`         | Porta do servidor Express                       | `3333`                                                             |
-| `DATABASE_URL` | String de conexão PostgreSQL                    | `postgresql://user:password@localhost:5432/DB_Pizza?schema=public` |
-| `JWT_SECRET`   | Chave secreta para assinar/verificar tokens JWT | String aleatória                                                   |
+| Variável                | Finalidade                                      | Valor esperado (exemplo)                                           |
+| ----------------------- | ----------------------------------------------- | ------------------------------------------------------------------ |
+| `PORT`                  | Porta do servidor Express                       | `3333`                                                             |
+| `DATABASE_URL`          | String de conexão PostgreSQL                    | `postgresql://user:password@localhost:5432/DB_Pizza?schema=public` |
+| `JWT_SECRET`            | Chave secreta para assinar/verificar tokens JWT | String aleatória                                                   |
+| `CLOUDINARY_CLOUD_NAME` | Nome da nuvem no Cloudinary                     | Nome da conta Cloudinary                                           |
+| `CLOUDINARY_API_KEY`    | Chave de API do Cloudinary                      | String da API Key                                                  |
+| `CLOUDINARY_API_SECRET` | Chave secreta do Cloudinary                     | String da API Secret                                               |
 
 ---
 
@@ -731,21 +805,40 @@ Authorization: Bearer <token>
 9. Controller responde com 200
 ```
 
+### 12.6 Criar Produto (Admin)
+
+```
+1. Cliente envia POST /api/products com form-data (name, price, description, categoryId, file)
+2. Middleware multer processa o upload e injeta req.file (valida tipo e tamanho)
+3. Middleware validateSchema(createProductSchema) valida os campos textuais
+4. Middleware isAuthenticated verifica o token e injeta req.userId
+5. Middleware isAdmin consulta o banco e verifica se role === "ADMIN"
+6. CreateProductController extrai dados de req.body e req.file
+7. CreateProductService.execute() é chamado com { name, price, description, categoryId, imageBuffer, imageName }
+8. Service verifica se a categoria existe (prisma.category.findFirst)
+9. Se não existir: erro "Categoria não encontrada!"
+10. Service faz upload da imagem para o Cloudinary (upload_stream, folder: "products")
+11. Se upload falhar: erro "Erro ao fazer upload da imagem!"
+12. Cria produto no banco com banner = secure_url do Cloudinary (prisma.product.create)
+13. Retorna { id, name, description, price, banner, categoryId, createdAt }
+14. Controller responde com 201
+```
+
 ---
 
 ## 13. Convenções do Projeto
 
 ### 13.1 Padrão de Nomenclatura
 
-| Contexto                   | Padrão                           | Exemplo                                   |
-| -------------------------- | -------------------------------- | ----------------------------------------- |
-| **Arquivos de controller** | PascalCase + sufixo `Controller` | `createUserController.ts`                 |
-| **Arquivos de service**    | PascalCase + sufixo `Service`    | `createUserService.ts`                    |
-| **Arquivos de middleware** | camelCase                        | `isAuthenticated.ts`                      |
-| **Arquivos de schema**     | camelCase + sufixo `Schema`      | `userSchema.ts`, `categorySchema.ts`      |
-| **Classes**                | PascalCase                       | `CreateUserController`                    |
-| **Métodos**                | camelCase                        | `execute()`, `handle()`                   |
-| **Pastas**                 | camelCase                        | `controllers/user/`, `services/category/` |
+| Contexto                   | Padrão                           | Exemplo                                                  |
+| -------------------------- | -------------------------------- | -------------------------------------------------------- |
+| **Arquivos de controller** | PascalCase + sufixo `Controller` | `createUserController.ts`                                |
+| **Arquivos de service**    | PascalCase + sufixo `Service`    | `createUserService.ts`                                   |
+| **Arquivos de middleware** | camelCase                        | `isAuthenticated.ts`                                     |
+| **Arquivos de schema**     | camelCase + sufixo `Schema`      | `userSchema.ts`, `categorySchema.ts`, `productSchema.ts` |
+| **Classes**                | PascalCase                       | `CreateUserController`                                   |
+| **Métodos**                | camelCase                        | `execute()`, `handle()`                                  |
+| **Pastas**                 | camelCase                        | `controllers/user/`, `services/category/`                |
 
 ### 13.2 Organização de Arquivos
 
@@ -821,18 +914,18 @@ Authorization: Bearer <token>
 
 ### 14.2 Melhorias Sugeridas
 
-| Sugestão                                                | Motivação                                                                                 |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Implementar CRUD completo**                           | Product, Order e Item possuem modelos no banco mas não têm rotas, controllers ou services |
-| **Adicionar validação Zod nos schemas de query/params** | Atualmente só `body` é validado                                                           |
-| **Adicionar logging estruturado**                       | Winston ou Pino para logs em produção                                                     |
-| **Adicionar testes**                                    | Testes unitários (services) e de integração (endpoints)                                   |
-| **Adicionar Docker/docker-compose**                     | Facilitar setup do ambiente (PostgreSQL + app)                                            |
-| **Adicionar rate limiting**                             | Prevenir abuso nos endpoints de autenticação                                              |
-| **Adicionar refresh token**                             | Fluxo de refresh para tokens JWT expirados                                                |
-| **Adicionar soft delete**                               | Para produtos e categorias (campo `deletedAt`)                                            |
-| **Migrar de CommonJS para ESM**                         | Para compatibilidade com EcmaScript modules modernos                                      |
-| **Centralizar mensagens de erro**                       | Arquivo de constantes/arquivo i18n para mensagens                                         |
+| Sugestão                                                | Motivação                                                                        |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **Implementar CRUD completo**                           | Order e Item possuem modelos no banco mas não têm rotas, controllers ou services |
+| **Adicionar validação Zod nos schemas de query/params** | Atualmente só `body` é validado                                                  |
+| **Adicionar logging estruturado**                       | Winston ou Pino para logs em produção                                            |
+| **Adicionar testes**                                    | Testes unitários (services) e de integração (endpoints)                          |
+| **Adicionar Docker/docker-compose**                     | Facilitar setup do ambiente (PostgreSQL + app)                                   |
+| **Adicionar rate limiting**                             | Prevenir abuso nos endpoints de autenticação                                     |
+| **Adicionar refresh token**                             | Fluxo de refresh para tokens JWT expirados                                       |
+| **Adicionar soft delete**                               | Para produtos e categorias (campo `deletedAt`)                                   |
+| **Migrar de CommonJS para ESM**                         | Para compatibilidade com EcmaScript modules modernos                             |
+| **Centralizar mensagens de erro**                       | Arquivo de constantes/arquivo i18n para mensagens                                |
 
 ### 14.3 Pontos de Atenção
 
