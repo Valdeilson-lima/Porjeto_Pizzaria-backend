@@ -28,6 +28,7 @@ Backend do sistema de gestão de pizzaria desenvolvido com Node.js, Express 5, P
 | POST   | `/api/users`      | Não  | Não   | Criar novo usuário      |
 | POST   | `/api/session`    | Não  | Não   | Autenticar (login/JWT)  |
 | GET    | `/api/me`         | Sim  | Não   | Dados do usuário logado |
+| GET    | `/api/categories` | Sim  | Não   | Listar categorias       |
 | POST   | `/api/categories` | Sim  | Sim   | Criar categoria         |
 
 ## Como usar

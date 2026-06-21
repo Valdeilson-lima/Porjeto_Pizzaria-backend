@@ -130,7 +130,8 @@ PostgreSQL
 │   │   │   ├── authUserController.ts
 │   │   │   └── detailUserController.ts
 │   │   └── category/
-│   │       └── createCategoryController.ts
+│   │       ├── createCategoryController.ts
+│   │       └── listCategoryController.ts
 │   ├── generated/prisma/          # Cliente Prisma gerado (gitignored)
 │   ├── lib/
 │   │   └── prisma.ts              # Inicialização do PrismaClient com adapter-pg
@@ -147,7 +148,8 @@ PostgreSQL
 │   │   │   ├── authUserService.ts
 │   │   │   └── detailUserService.ts
 │   │   └── category/
-│   │       └── createCategoryService.ts
+│   │       ├── createCategoryService.ts
+│   │       └── listCategoryService.ts
 │   ├── routes.ts                  # Definição de todas as rotas
 │   └── server.ts                  # Entry point do servidor Express
 ├── .agents/                       # Habilidades de agentes de IA (opencode)
@@ -569,6 +571,45 @@ Authorization: Bearer <token>
 
 ---
 
+### 9.5 `GET /api/categories` — Listar categorias
+
+| Atributo         | Valor                    |
+| ---------------- | ------------------------ |
+| **Controller**   | `ListCategoryController` |
+| **Service**      | `ListCategoryService`    |
+| **Autenticação** | `isAuthenticated`        |
+| **Validação**    | Nenhuma                  |
+
+**Request Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+**Response (200):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Pizzas Doces",
+    "createdAt": "2026-06-19T...Z"
+  },
+  {
+    "id": "uuid",
+    "name": "Pizzas Salgadas",
+    "createdAt": "2026-06-19T...Z"
+  }
+]
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|---|---|
+| `401` | Token ausente ou inválido |
+
+---
+
 ## 10. Bibliotecas e Dependências
 
 ### Dependências de Produção
@@ -674,6 +715,20 @@ Authorization: Bearer <token>
 9. Cria categoria no banco (prisma.category.create)
 10. Retorna { id, name, createdAt }
 11. Controller responde com 201
+```
+
+### 12.5 Listar Categorias
+
+```
+1. Cliente envia GET /api/categories com Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Injeta req.userId com o subject do token
+4. ListCategoryController recebe a requisição
+5. ListCategoryService.execute() é chamado
+6. Service busca todas as categorias (prisma.category.findMany)
+7. Ordena por nome em ordem alfabética (orderBy: { name: "asc" })
+8. Retorna array com { id, name, createdAt } de cada categoria
+9. Controller responde com 200
 ```
 
 ---
