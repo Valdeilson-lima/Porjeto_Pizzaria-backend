@@ -48,7 +48,7 @@
 
 ### 3.1 Padrão Arquitetural
 
-Arquitetura em camadas (Controller → Service → Prisma/DB), seguindo o padrão de responsabilidade única.
+Arquitetura em camadas (Controller → Service → Repository → Prisma/DB), seguindo o padrão de responsabilidade única.
 
 ### 3.2 Fluxo de Requisições
 
@@ -65,6 +65,8 @@ Controller
     ↓
 Service
     ↓
+Repository
+    ↓
 Prisma Client (lib/prisma.ts)
     ↓
 PostgreSQL
@@ -72,13 +74,14 @@ PostgreSQL
 
 ### 3.3 Responsabilidades de cada camada
 
-| Camada          | Diretório             | Responsabilidade                                                                                    |
-| --------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
-| **Routes**      | `src/routes.ts`       | Definir endpoints HTTP, associar middlewares e controllers                                          |
-| **Controllers** | `src/controllers/**/` | Receber e responder requisições HTTP. Extrair dados de `req.body/params/query` e delegar ao service |
-| **Services**    | `src/services/**/`    | Conter todas as regras de negócio, validações e chamadas ao Prisma                                  |
-| **Middlewares** | `src/middlewares/`    | Interceptar requisições para validação, autenticação e autorização                                  |
-| **Schemas**     | `src/schemas/`        | Definir schemas de validação com Zod                                                                |
+| Camada           | Diretório              | Responsabilidade                                                                                    |
+| ---------------- | ---------------------- | --------------------------------------------------------------------------------------------------- |
+| **Routes**       | `src/routes.ts`        | Definir endpoints HTTP, associar middlewares e controllers                                          |
+| **Controllers**  | `src/controllers/**/`  | Receber e responder requisições HTTP. Extrair dados de `req.body/params/query` e delegar ao service |
+| **Services**     | `src/services/**/`     | Conter todas as regras de negócio e delegar consultas ao repository                                 |
+| **Repositories** | `src/repositories/**/` | Executar consultas ao banco de dados via Prisma                                                     |
+| **Middlewares**  | `src/middlewares/`     | Interceptar requisições para validação, autenticação e autorização                                  |
+| **Schemas**      | `src/schemas/`         | Definir schemas de validação com Zod                                                                |
 
 ### 3.4 Regras por Camada
 
@@ -102,8 +105,19 @@ PostgreSQL
 
 #### Services (`src/services/**/*`)
 
-- **Responsabilidade:** Conter todas as regras de negócio, validações de domínio e acesso ao banco via Prisma
-- **Integrações externas:** Banco de dados (Prisma), bcryptjs (hash de senha) e Cloudinary (upload de imagens)
+- **Responsabilidade:** Conter todas as regras de negócio, validações de domínio e delegar consultas ao repository
+- **Integrações externas:** bcryptjs (hash de senha) e Cloudinary (upload de imagens) via service; banco de dados via repository
+
+#### Repositories (`src/repositories/**/*`)
+
+- **Responsabilidade:** Executar consultas ao banco de dados via Prisma, aplicar filtros e transformar dados para o formato da API
+- **O que podem fazer:**
+  - Importar e usar o PrismaClient
+  - Aplicar filtros, ordenação e seleção de campos
+  - Mapear nomes de campos do banco para o formato de resposta da API
+- **O que NÃO podem fazer:**
+  - Conter regras de negócio
+  - Lançar erros de domínio (apenas erros técnicos)
 
 #### Middlewares (`src/middlewares/`)
 
@@ -142,6 +156,9 @@ PostgreSQL
 │   ├── generated/prisma/          # Cliente Prisma gerado (gitignored)
 │   ├── lib/
 │   │   └── prisma.ts              # Inicialização do PrismaClient com adapter-pg
+│   ├── repositories/
+│   │   └── product/
+│   │       └── listProductRepository.ts
 │   ├── middlewares/
 │   │   ├── isAuthenticated.ts     # Autenticação JWT
 │   │   ├── isAdmin.ts             # Autorização ADMIN
@@ -180,18 +197,19 @@ PostgreSQL
 
 ### Responsabilidade de cada diretório
 
-| Diretório          | Responsabilidade                                        |
-| ------------------ | ------------------------------------------------------- |
-| `src/controllers/` | Classes que manipulam requisições/respostas HTTP        |
-| `src/services/`    | Classes com regras de negócio e acesso ao banco         |
-| `src/middlewares/` | Funções de middleware (auth, validação, autorização)    |
-| `src/schemas/`     | Schemas Zod para validação de dados de entrada          |
-| `src/config/`      | Configurações de serviços externos (Cloudinary, Multer) |
-| `src/lib/`         | Inicialização de bibliotecas (Prisma)                   |
-| `src/@types/`      | Declarações de tipos e augmentações                     |
-| `src/generated/`   | Código gerado pelo Prisma (não versionado)              |
-| `prisma/`          | Schema, migrations e configuração do Prisma             |
-| `.husky/`          | Hooks do Git gerenciados pelo Husky                     |
+| Diretório           | Responsabilidade                                        |
+| ------------------- | ------------------------------------------------------- |
+| `src/controllers/`  | Classes que manipulam requisições/respostas HTTP        |
+| `src/services/`     | Classes com regras de negócio e delegação ao repository |
+| `src/repositories/` | Classes de acesso ao banco de dados via Prisma          |
+| `src/middlewares/`  | Funções de middleware (auth, validação, autorização)    |
+| `src/schemas/`      | Schemas Zod para validação de dados de entrada          |
+| `src/config/`       | Configurações de serviços externos (Cloudinary, Multer) |
+| `src/lib/`          | Inicialização de bibliotecas (Prisma)                   |
+| `src/@types/`       | Declarações de tipos e augmentações                     |
+| `src/generated/`    | Código gerado pelo Prisma (não versionado)              |
+| `prisma/`           | Schema, migrations e configuração do Prisma             |
+| `.husky/`           | Hooks do Git gerenciados pelo Husky                     |
 
 ---
 
@@ -394,6 +412,12 @@ Relações:
 | `body.price`       | `string` (regex `/^\d+$/`)   | `POST /api/products` |
 | `body.description` | `string`, mínimo 1 caractere | `POST /api/products` |
 | `body.categoryId`  | `string` (UUID)              | `POST /api/products` |
+
+#### `listProductsSchema` (`src/schemas/productSchema.ts`)
+
+| Campo            | Regra                               | Onde é usado        |
+| ---------------- | ----------------------------------- | ------------------- |
+| `query.disabled` | `enum(["true", "false"])`, opcional | `GET /api/products` |
 
 ---
 
@@ -676,6 +700,42 @@ Authorization: Bearer <token>
 | `401` | Token ausente ou inválido |
 | `403` | Usuário não é ADMIN |
 
+### 9.7 `GET /api/products` — Listar produtos
+
+| Atributo         | Valor                                |
+| ---------------- | ------------------------------------ |
+| **Controller**   | `ListProductController`              |
+| **Service**      | `ListProductService`                 |
+| **Repository**   | `ListProductRepository`              |
+| **Autenticação** | `isAuthenticated`                    |
+| **Validação**    | `validateSchema(listProductsSchema)` |
+
+**Query Params:**
+
+| Parâmetro  | Tipo     | Obrigatório | Padrão  | Descrição                                                                |
+| ---------- | -------- | ----------- | ------- | ------------------------------------------------------------------------ |
+| `disabled` | `string` | Não         | `false` | Filtrar por produtos desabilitados (`"true"`) ou habilitados (`"false"`) |
+
+**Response (200):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "X-Burger",
+    "price": 2500,
+    "disabled": false,
+    "createdAt": "2026-06-21T...Z"
+  }
+]
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | `disabled` inválido (não é `"true"` ou `"false"`) |
+| `401` | Token ausente ou inválido |
+
 ---
 
 ## 10. Bibliotecas e Dependências
@@ -805,7 +865,23 @@ Authorization: Bearer <token>
 9. Controller responde com 200
 ```
 
-### 12.6 Criar Produto (Admin)
+### 12.6 Listar Produtos
+
+```
+1. Cliente envia GET /api/products?disabled=true|false com Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware validateSchema(listProductsSchema) valida o query param disabled
+4. ListProductController extrai req.query.disabled
+5. ListProductService.execute(disabled) é chamado
+6. Service define disabled=false se o parâmetro não foi enviado
+7. Service chama ListProductRepository.execute(disabledFilter)
+8. Repository consulta o banco com filtro where: { disable: disabledFilter }
+9. Repository ordena por nome (orderBy: { name: "asc" })
+10. Repository retorna array com { id, name, price, disabled, createdAt }
+11. Controller responde com 200
+```
+
+### 12.7 Criar Produto (Admin)
 
 ```
 1. Cliente envia POST /api/products com form-data (name, price, description, categoryId, file)
@@ -836,6 +912,7 @@ Authorization: Bearer <token>
 | **Arquivos de service**    | PascalCase + sufixo `Service`    | `createUserService.ts`                                   |
 | **Arquivos de middleware** | camelCase                        | `isAuthenticated.ts`                                     |
 | **Arquivos de schema**     | camelCase + sufixo `Schema`      | `userSchema.ts`, `categorySchema.ts`, `productSchema.ts` |
+| **Arquivos de repository** | PascalCase + sufixo `Repository` | `listProductRepository.ts`                               |
 | **Classes**                | PascalCase                       | `CreateUserController`                                   |
 | **Métodos**                | camelCase                        | `execute()`, `handle()`                                  |
 | **Pastas**                 | camelCase                        | `controllers/user/`, `services/category/`                |
