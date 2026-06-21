@@ -1,15 +1,15 @@
-# 🍕 Pizzaria Backend
+# Pizzaria Backend
 
-Backend do sistema de gestão de pizzaria desenvolvido com **Node.js**, **Express 5**, **Prisma ORM** e **PostgreSQL**.
+Backend do sistema de gestão de pizzaria desenvolvido com Node.js, Express 5, Prisma ORM e PostgreSQL.
 
 ## Tecnologias
 
 - **Runtime:** Node.js + TypeScript
 - **Framework:** Express 5
-- **ORM:** Prisma 7 + PostgreSQL
+- **ORM:** Prisma 7 + PostgreSQL (adapter-pg)
 - **Autenticação:** JWT + bcryptjs
-- **Validação:** Zod
-- **Dev:** tsx (watch mode), Husky + lint-staged + Prettier
+- **Validação:** Zod 4
+- **Dev:** tsx (watch mode), Husky + lint-staged + Prettier + commitlint
 
 ## Modelos do Banco
 
@@ -23,10 +23,12 @@ Backend do sistema de gestão de pizzaria desenvolvido com **Node.js**, **Expres
 
 ## Rotas da API
 
-| Método | Rota           | Descrição              |
-| ------ | -------------- | ---------------------- |
-| POST   | `/api/users`   | Criar novo usuário     |
-| POST   | `/api/session` | Autenticar (login/JWT) |
+| Método | Rota              | Auth | Admin | Descrição               |
+| ------ | ----------------- | ---- | ----- | ----------------------- |
+| POST   | `/api/users`      | Não  | Não   | Criar novo usuário      |
+| POST   | `/api/session`    | Não  | Não   | Autenticar (login/JWT)  |
+| GET    | `/api/me`         | Sim  | Não   | Dados do usuário logado |
+| POST   | `/api/categories` | Sim  | Sim   | Criar categoria         |
 
 ## Como usar
 
@@ -57,4 +59,22 @@ npm run dev
 PORT=3333
 DATABASE_URL="postgresql://user:password@localhost:5432/DB_Pizza?schema=public"
 JWT_SECRET="your-secret-key"
+```
+
+## Estrutura do Projeto
+
+```
+src/
+├── @types/express/       # Tipos estendidos do Express
+├── controllers/          # Controllers (entrada HTTP)
+│   ├── user/
+│   └── category/
+├── middlewares/           # isAuthenticated, isAdmin, validateSchema
+├── schemas/               # Schemas de validação Zod
+├── services/              # Regras de negócio
+│   ├── user/
+│   └── category/
+├── lib/prisma.ts          # Conexão com banco
+├── routes.ts              # Definição de rotas
+└── server.ts              # Entry point
 ```
