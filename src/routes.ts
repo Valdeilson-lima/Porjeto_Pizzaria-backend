@@ -13,10 +13,7 @@ import { ListCategoryController } from "./controllers/category/listCategoryContr
 import { createCategorySchema } from "./schemas/categorySchema";
 import { CreateProductController } from "./controllers/product/createProductController";
 import { ListProductController } from "./controllers/product/listProductController";
-import {
-  createProductSchema,
-  listProductsSchema,
-} from "./schemas/productSchema";
+import { createProductSchema } from "./schemas/productSchema";
 
 const router = Router();
 const upload = multer(multerConfig);
@@ -45,12 +42,7 @@ router.post(
   new CreateCategoryController().handle
 );
 
-router.get(
-  "/products",
-  isAuthenticated,
-  validateSchema(listProductsSchema),
-  new ListProductController().handle
-);
+router.get("/products", isAuthenticated, new ListProductController().handle);
 
 router.post(
   "/products",

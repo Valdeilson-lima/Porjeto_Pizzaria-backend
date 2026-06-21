@@ -2,12 +2,7 @@ import { prisma } from "../../lib/prisma";
 
 class ListProductService {
   async execute(disabled?: string) {
-    const disabledFilter = disabled === undefined ? false : disabled === "true";
-
-    const products = await prisma.product.findMany({
-      where: {
-        disable: disabledFilter,
-      },
+    const allProducts = await prisma.product.findMany({
       select: {
         id: true,
         name: true,
@@ -29,7 +24,9 @@ class ListProductService {
       },
     });
 
-    return products;
+    const disabledFilter = disabled === undefined ? false : disabled === "true";
+
+    return allProducts.filter((product) => product.disable === disabledFilter);
   }
 }
 
