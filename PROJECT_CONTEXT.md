@@ -273,6 +273,7 @@ PostgreSQL
 | `status`    | `Boolean`       | `@default(false)`      | `false` = aberto, `true` = fechado      |
 | `draft`     | `Boolean`       | `@default(true)`       | `true` = rascunho, `false` = finalizado |
 | `name`      | `String?`       | Opcional               | Nome do cliente                         |
+| `disabled`  | `Boolean`       | `@default(false)`      | Pedido ativo/desativado (soft delete)   |
 | `Items`     | `Item[]`        | Relação 1:N            | Itens do pedido                         |
 | `createdAt` | `DateTime`      | `@default(now())`      | Data de criação                         |
 | `updatedAt` | `DateTime`      | `@updatedAt`           | Data da última atualização              |
@@ -345,6 +346,7 @@ Order
 ├── status: Boolean (default: false = aberto)
 ├── draft: Boolean (default: true = rascunho)
 ├── name: String? (opcional)
+├── disabled: Boolean (default: false)
 ├── Items: Item[] (1:N)
 ├── createdAt: DateTime
 └── updatedAt: DateTime

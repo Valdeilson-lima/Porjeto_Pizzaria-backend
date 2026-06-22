@@ -57,6 +57,7 @@ model Order {
   status    Boolean  @default(false) // false = open, true = closed
   draft     Boolean  @default(true) // true = draft, false = finalized
   name      String?
+  disabled  Boolean  @default(false)
   Items     Item[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
