@@ -7,6 +7,17 @@ interface CreateOrderServiceProps {
 
 class CreateOrderService {
   async execute({ table, name }: CreateOrderServiceProps) {
+    const orderExists = await prisma.order.findFirst({
+      where: {
+        table,
+        status: false,
+      },
+    });
+
+    if (orderExists) {
+      throw new Error("Já existe um pedido para esta mesa! Mesa em aberto.");
+    }
+
     const order = await prisma.order.create({
       data: {
         table,
