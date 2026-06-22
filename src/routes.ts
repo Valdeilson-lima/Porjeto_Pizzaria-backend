@@ -14,9 +14,11 @@ import { createCategorySchema } from "./schemas/categorySchema";
 import { CreateProductController } from "./controllers/product/createProductController";
 import { ListProductController } from "./controllers/product/listProductController";
 import { DeleteProductController } from "./controllers/product/deleteProductController";
+import { ListProductByCategoryController } from "./controllers/product/listProductByCategoryController";
 import {
   createProductSchema,
   listProductsSchema,
+  listProductByCategorySchema,
 } from "./schemas/productSchema";
 
 const router = Router();
@@ -67,6 +69,13 @@ router.delete(
   isAuthenticated,
   isAdmin,
   new DeleteProductController().handle
+);
+
+router.get(
+  "/category/product",
+  isAuthenticated,
+  validateSchema(listProductByCategorySchema),
+  new ListProductByCategoryController().handle
 );
 
 export default router;
