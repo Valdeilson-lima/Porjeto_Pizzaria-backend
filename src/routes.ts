@@ -14,6 +14,7 @@ import {
   addItemSchema,
   createOrderSchema,
   listOrdersSchema,
+  removeItemSchema,
 } from "./schemas/orderSchema";
 import { ListCategoryController } from "./controllers/category/listCategoryController";
 import { createCategorySchema } from "./schemas/categorySchema";
@@ -28,6 +29,7 @@ import {
 } from "./schemas/productSchema";
 import { ListOrdersController } from "./controllers/order/listOrdersController";
 import { AddItemController } from "./controllers/order/addItemController";
+import { RemoveItemController } from "./controllers/order/removeItemController";
 
 const router = Router();
 const upload = multer(multerConfig);
@@ -105,6 +107,13 @@ router.post(
   isAuthenticated,
   validateSchema(addItemSchema),
   new AddItemController().handle
+);
+
+router.delete(
+  "/order/remove",
+  isAuthenticated,
+  validateSchema(removeItemSchema),
+  new RemoveItemController().handle
 );
 
 export default router;
