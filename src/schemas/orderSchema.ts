@@ -45,3 +45,12 @@ export const addItemSchema = z.object({
       .positive({ message: "A quantidade deve ser positiva" }),
   }),
 });
+
+export const sendOrderSchema = z.object({
+  body: z.object({
+    orderId: z.string({ message: "O ID do pedido é obrigatório" }),
+    name: z
+      .string({ message: "O nome do cliente é obrigatório" })
+      .min(1, "O nome do cliente é obrigatório"),
+  }),
+});
