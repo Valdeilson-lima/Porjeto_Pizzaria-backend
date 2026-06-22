@@ -135,9 +135,14 @@ PostgreSQL
 │   │   ├── category/
 │   │   │   ├── createCategoryController.ts
 │   │   │   └── listCategoryController.ts
-│   │   └── product/
-│   │       ├── createProductController.ts
-│   │       └── listProductController.ts
+│   │   ├── product/
+│   │   │   ├── createProductController.ts
+│   │   │   ├── listProductController.ts
+│   │   │   ├── deleteProductController.ts
+│   │   │   └── listProductByCategoryController.ts
+│   │   └── order/
+│   │       ├── createOrderController.ts
+│   │       └── listOrdersController.ts
 │   ├── config/
 │   │   ├── cloudinary.ts             # Configuração do Cloudinary
 │   │   └── multer.ts                 # Configuração do Multer (memoryStorage)
@@ -151,7 +156,8 @@ PostgreSQL
 │   ├── schemas/
 │   │   ├── userSchema.ts          # Schemas de usuário (criação + login)
 │   │   ├── categorySchema.ts      # Schema de criação de categoria
-│   │   └── productSchema.ts       # Schema de criação de produto
+│   │   ├── productSchema.ts       # Schema de criação de produto
+│   │   └── orderSchema.ts         # Schemas de pedido (criação + listagem)
 │   ├── services/
 │   │   ├── user/
 │   │   │   ├── createUserService.ts
@@ -160,9 +166,13 @@ PostgreSQL
 │   │   ├── category/
 │   │   │   ├── createCategoryService.ts
 │   │   │   └── listCategoryService.ts
-│   │   └── product/
-│   │       ├── createProductService.ts
-│   │       └── listProductService.ts
+│   │   ├── product/
+│   │   │   ├── createProductService.ts
+│   │   │   ├── listProductService.ts
+│   │   │   └── deleteProductService.ts
+│   │   └── order/
+│   │       ├── createOrderService.ts
+│   │       └── listOrdersService.ts
 │   ├── routes.ts                  # Definição de todas as rotas
 │   └── server.ts                  # Entry point do servidor Express
 ├── .agents/                       # Habilidades de agentes de IA (opencode)
@@ -403,6 +413,25 @@ Relações:
 | Campo            | Regra                   | Onde é usado        |
 | ---------------- | ----------------------- | ------------------- |
 | `query.disabled` | `z.string().optional()` | `GET /api/products` |
+
+#### `listProductByCategorySchema` (`src/schemas/productSchema.ts`)
+
+| Campo               | Regra                 | Onde é usado                |
+| ------------------- | --------------------- | --------------------------- |
+| `query.category_id` | `string`, obrigatório | `GET /api/category/product` |
+
+#### `createOrderSchema` (`src/schemas/orderSchema.ts`)
+
+| Campo        | Regra                                     | Onde é usado      |
+| ------------ | ----------------------------------------- | ----------------- |
+| `body.table` | `number`, int, positivo, obrigatório      | `POST /api/order` |
+| `body.name`  | `string`, mínimo 1 caractere, obrigatório | `POST /api/order` |
+
+#### `listOrdersSchema` (`src/schemas/orderSchema.ts`)
+
+| Campo         | Regra                                     | Onde é usado      |
+| ------------- | ----------------------------------------- | ----------------- |
+| `query.draft` | `string`, opcional, `"true"` ou `"false"` | `GET /api/orders` |
 
 ---
 
@@ -722,6 +751,171 @@ Authorization: Bearer <token>
 
 ---
 
+### 9.8 `DELETE /api/product` — Desativar produto
+
+| Atributo         | Valor                     |
+| ---------------- | ------------------------- |
+| **Controller**   | `DeleteProductController` |
+| **Service**      | `DeleteProductService`    |
+| **Autenticação** | `isAuthenticated`         |
+| **Autorização**  | `isAdmin`                 |
+| **Validação**    | Nenhuma                   |
+
+**Query Params:**
+
+| Parâmetro   | Tipo     | Obrigatório | Descrição       |
+| ----------- | -------- | ----------- | --------------- |
+| `productId` | `string` | Sim         | UUID do produto |
+
+**Response (200):**
+
+```json
+{
+  "message": "Produto deletado / desativado com sucesso"
+}
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | Produto não encontrado |
+| `401` | Token ausente ou inválido |
+| `403` | Usuário não é ADMIN |
+
+---
+
+### 9.9 `GET /api/category/product` — Listar produtos por categoria
+
+| Atributo         | Valor                                         |
+| ---------------- | --------------------------------------------- |
+| **Controller**   | `ListProductByCategoryController`             |
+| **Service**      | `ListProductByCategoryService`                |
+| **Autenticação** | `isAuthenticated`                             |
+| **Validação**    | `validateSchema(listProductByCategorySchema)` |
+
+**Query Params:**
+
+| Parâmetro     | Tipo     | Obrigatório | Descrição         |
+| ------------- | -------- | ----------- | ----------------- |
+| `category_id` | `string` | Sim         | UUID da categoria |
+
+**Response (200):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Pizza Calabresa",
+    "price": 3500,
+    "description": "Pizza de calabresa com mussarela",
+    "banner": "https://...jpg",
+    "disabled": false,
+    "categoryId": "uuid",
+    "createdAt": "2026-06-21T...Z",
+    "category": {
+      "id": "uuid",
+      "name": "Pizzas Salgadas"
+    }
+  }
+]
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `401` | Token ausente ou inválido |
+
+---
+
+### 9.10 `POST /api/order` — Criar pedido
+
+| Atributo         | Valor                               |
+| ---------------- | ----------------------------------- |
+| **Controller**   | `CreateOrderController`             |
+| **Service**      | `CreateOrderService`                |
+| **Autenticação** | `isAuthenticated`                   |
+| **Validação**    | `validateSchema(createOrderSchema)` |
+
+**Request:**
+
+```json
+{
+  "table": 5,
+  "name": "João Silva"
+}
+```
+
+**Response (201):**
+
+```json
+{
+  "id": "uuid",
+  "table": 5,
+  "name": "João Silva",
+  "status": false,
+  "draft": true,
+  "createdAt": "2026-06-21T...Z"
+}
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | Dados inválidos (validação Zod) |
+| `401` | Token ausente ou inválido |
+
+---
+
+### 9.11 `GET /api/orders` — Listar pedidos
+
+| Atributo         | Valor                              |
+| ---------------- | ---------------------------------- |
+| **Controller**   | `ListOrdersController`             |
+| **Service**      | `ListOrdersService`                |
+| **Autenticação** | `isAuthenticated`                  |
+| **Validação**    | `validateSchema(listOrdersSchema)` |
+
+**Query Params:**
+
+| Parâmetro | Tipo     | Obrigatório | Padrão  | Descrição                                                  |
+| --------- | -------- | ----------- | ------- | ---------------------------------------------------------- |
+| `draft`   | `string` | Não         | `false` | Filtrar por rascunho (`"true"`) ou finalizados (`"false"`) |
+
+**Response (200):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "table": 5,
+    "name": "João Silva",
+    "status": false,
+    "draft": true,
+    "createdAt": "2026-06-21T...Z",
+    "Items": [
+      {
+        "id": "uuid",
+        "amount": 2,
+        "product": {
+          "id": "uuid",
+          "name": "Pizza Calabresa",
+          "description": "Pizza de calabresa com mussarela",
+          "price": 3500,
+          "banner": "https://...jpg"
+        }
+      }
+    ]
+  }
+]
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `401` | Token ausente ou inválido |
+
+---
+
 ## 10. Bibliotecas e Dependências
 
 ### Dependências de Produção
@@ -883,6 +1077,62 @@ Authorization: Bearer <token>
 14. Controller responde com 201
 ```
 
+### 12.8 Desativar Produto (Admin)
+
+```
+1. Cliente envia DELETE /api/product?productId=uuid com Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware isAdmin consulta o banco e verifica se role === "ADMIN"
+4. DeleteProductController extrai req.query.productId
+5. DeleteProductService.execute({ productId }) é chamado
+6. Service busca produto por id (prisma.product.findFirst)
+7. Se não existir: erro "Produto não encontrado"
+8. Service desativa o produto (prisma.product.update com disabled: true)
+9. Retorna { message: "Produto deletado / desativado com sucesso" }
+10. Controller responde com 200
+```
+
+### 12.9 Listar Produtos por Categoria
+
+```
+1. Cliente envia GET /api/category/product?category_id=uuid com Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware validateSchema(listProductByCategorySchema) valida o query param category_id
+4. ListProductByCategoryController extrai req.query.category_id
+5. ListProductByCategoryService.execute({ categoryId }) é chamado
+6. Service consulta o banco com where: { categoryId, disabled: false } (prisma.product.findMany)
+7. Ordena por nome (orderBy: { name: "asc" })
+8. Retorna array com { id, name, price, description, banner, disabled, categoryId, createdAt, category }
+9. Controller responde com 200
+```
+
+### 12.10 Criar Pedido
+
+```
+1. Cliente envia POST /api/order com { table, name } e Authorization: Bearer <token>
+2. Middleware validateSchema(createOrderSchema) valida os campos
+3. Middleware isAuthenticated verifica o token e injeta req.userId
+4. CreateOrderController recebe { table, name }
+5. CreateOrderService.execute({ table, name }) é chamado
+6. Service cria pedido no banco (prisma.order.create) com status false (aberto) e draft true (rascunho)
+7. Retorna { id, table, name, status, draft, createdAt }
+8. Controller responde com 201
+```
+
+### 12.11 Listar Pedidos
+
+```
+1. Cliente envia GET /api/orders?draft=true|false com Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware validateSchema(listOrdersSchema) valida o query param draft
+4. ListOrdersController extrai req.query.draft
+5. ListOrdersService.execute({ draft }) é chamado
+6. Service converte draft string para boolean (default false)
+7. Service consulta o banco com where: { draft } (prisma.order.findMany)
+8. Retorna array com { id, table, name, status, draft, createdAt, Items[] }
+9. Controller responde com 200
+```
+
 ---
 
 ## 13. Convenções do Projeto
@@ -973,18 +1223,18 @@ Authorization: Bearer <token>
 
 ### 14.2 Melhorias Sugeridas
 
-| Sugestão                             | Motivação                                                                        |
-| ------------------------------------ | -------------------------------------------------------------------------------- |
-| **Implementar CRUD completo**        | Order e Item possuem modelos no banco mas não têm rotas, controllers ou services |
-| **Implementar camada de repository** | Serviços acessam Prisma diretamente; repository adicionaria separação            |
-| **Adicionar logging estruturado**    | Winston ou Pino para logs em produção                                            |
-| **Adicionar testes**                 | Testes unitários (services) e de integração (endpoints)                          |
-| **Adicionar Docker/docker-compose**  | Facilitar setup do ambiente (PostgreSQL + app)                                   |
-| **Adicionar rate limiting**          | Prevenir abuso nos endpoints de autenticação                                     |
-| **Adicionar refresh token**          | Fluxo de refresh para tokens JWT expirados                                       |
-| **Adicionar soft delete**            | Para produtos e categorias (campo `deletedAt`)                                   |
-| **Migrar de CommonJS para ESM**      | Para compatibilidade com EcmaScript modules modernos                             |
-| **Centralizar mensagens de erro**    | Arquivo de constantes/arquivo i18n para mensagens                                |
+| Sugestão                             | Motivação                                                              |
+| ------------------------------------ | ---------------------------------------------------------------------- |
+| **Implementar CRUD de Item**         | Item possui modelo no banco mas não tem rotas, controllers ou services |
+| **Implementar camada de repository** | Serviços acessam Prisma diretamente; repository adicionaria separação  |
+| **Adicionar logging estruturado**    | Winston ou Pino para logs em produção                                  |
+| **Adicionar testes**                 | Testes unitários (services) e de integração (endpoints)                |
+| **Adicionar Docker/docker-compose**  | Facilitar setup do ambiente (PostgreSQL + app)                         |
+| **Adicionar rate limiting**          | Prevenir abuso nos endpoints de autenticação                           |
+| **Adicionar refresh token**          | Fluxo de refresh para tokens JWT expirados                             |
+| **Adicionar soft delete**            | Para produtos e categorias (campo `deletedAt`)                         |
+| **Migrar de CommonJS para ESM**      | Para compatibilidade com EcmaScript modules modernos                   |
+| **Centralizar mensagens de erro**    | Arquivo de constantes/arquivo i18n para mensagens                      |
 
 ### 14.3 Pontos de Atenção
 

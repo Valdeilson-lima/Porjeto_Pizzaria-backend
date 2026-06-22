@@ -25,15 +25,19 @@ Backend do sistema de gestão de pizzaria desenvolvido com Node.js, Express 5, P
 
 ## Rotas da API
 
-| Método | Rota              | Auth | Admin | Descrição                         |
-| ------ | ----------------- | ---- | ----- | --------------------------------- |
-| POST   | `/api/users`      | Não  | Não   | Criar novo usuário                |
-| POST   | `/api/session`    | Não  | Não   | Autenticar (login/JWT)            |
-| GET    | `/api/me`         | Sim  | Não   | Dados do usuário logado           |
-| GET    | `/api/categories` | Sim  | Não   | Listar categorias                 |
-| POST   | `/api/categories` | Sim  | Sim   | Criar categoria                   |
-| GET    | `/api/products`   | Sim  | Não   | Listar produtos (query: disabled) |
-| POST   | `/api/products`   | Sim  | Sim   | Criar produto (com imagem)        |
+| Método | Rota                    | Auth | Admin | Descrição                                          |
+| ------ | ----------------------- | ---- | ----- | -------------------------------------------------- |
+| POST   | `/api/users`            | Não  | Não   | Criar novo usuário                                 |
+| POST   | `/api/session`          | Não  | Não   | Autenticar (login/JWT)                             |
+| GET    | `/api/me`               | Sim  | Não   | Dados do usuário logado                            |
+| GET    | `/api/categories`       | Sim  | Não   | Listar categorias                                  |
+| POST   | `/api/categories`       | Sim  | Sim   | Criar categoria                                    |
+| GET    | `/api/products`         | Sim  | Não   | Listar produtos (query: disabled)                  |
+| POST   | `/api/products`         | Sim  | Sim   | Criar produto (com imagem)                         |
+| DELETE | `/api/product`          | Sim  | Sim   | Desativar produto (soft delete)                    |
+| GET    | `/api/category/product` | Sim  | Não   | Listar produtos por categoria (query: category_id) |
+| POST   | `/api/order`            | Sim  | Não   | Criar pedido (table, name)                         |
+| GET    | `/api/orders`           | Sim  | Não   | Listar pedidos (query: draft)                      |
 
 ## Como usar
 
@@ -77,14 +81,16 @@ src/
 ├── controllers/          # Controllers (entrada HTTP)
 │   ├── user/
 │   ├── category/
-│   └── product/
+│   ├── product/
+│   └── order/
 ├── config/                # Configurações (Cloudinary, Multer)
 ├── middlewares/           # isAuthenticated, isAdmin, validateSchema
 ├── schemas/               # Schemas de validação Zod
 ├── services/              # Regras de negócio
 │   ├── user/
 │   ├── category/
-│   └── product/
+│   ├── product/
+│   └── order/
 ├── lib/prisma.ts          # Conexão com banco
 ├── routes.ts              # Definição de rotas
 └── server.ts              # Entry point
