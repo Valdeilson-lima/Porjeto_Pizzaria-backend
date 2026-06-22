@@ -9,6 +9,8 @@ import { DetailUserController } from "./controllers/user/detailUserController";
 import { isAuthenticated } from "./middlewares/isAuthenticated";
 import { isAdmin } from "./middlewares/isAdmin";
 import { CreateCategoryController } from "./controllers/category/createCategoryController";
+import { CreateOrderController } from "./controllers/order/createOrderController";
+import { createOrderSchema, listOrdersSchema } from "./schemas/orderSchema";
 import { ListCategoryController } from "./controllers/category/listCategoryController";
 import { createCategorySchema } from "./schemas/categorySchema";
 import { CreateProductController } from "./controllers/product/createProductController";
@@ -20,6 +22,7 @@ import {
   listProductsSchema,
   listProductByCategorySchema,
 } from "./schemas/productSchema";
+import { ListOrdersController } from "./controllers/order/listOrdersController";
 
 const router = Router();
 const upload = multer(multerConfig);
@@ -76,6 +79,20 @@ router.get(
   isAuthenticated,
   validateSchema(listProductByCategorySchema),
   new ListProductByCategoryController().handle
+);
+
+router.post(
+  "/order",
+  isAuthenticated,
+  validateSchema(createOrderSchema),
+  new CreateOrderController().handle
+);
+
+router.get(
+  "/orders",
+  isAuthenticated,
+  validateSchema(listOrdersSchema),
+  new ListOrdersController().handle
 );
 
 export default router;
