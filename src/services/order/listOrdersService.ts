@@ -9,6 +9,7 @@ class ListOrdersService {
     const orders = await prisma.order.findMany({
       where: {
         draft: draft === "true" ? true : false,
+        disabled: false,
       },
       select: {
         id: true,
@@ -16,6 +17,7 @@ class ListOrdersService {
         name: true,
         status: true,
         draft: true,
+        disabled: true,
         createdAt: true,
         Items: {
           select: {
