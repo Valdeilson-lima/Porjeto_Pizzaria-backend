@@ -23,6 +23,12 @@ export const listOrdersSchema = z.object({
   }),
 });
 
+export const detailOrderSchema = z.object({
+  query: z.object({
+    orderId: z.string({ message: "O ID do pedido é obrigatório" }),
+  }),
+});
+
 export const removeItemSchema = z.object({
   query: z.object({
     itemId: z.string({ message: "O ID do item é obrigatório" }),
