@@ -13,6 +13,7 @@ import { ListCategoryController } from "./controllers/category/listCategoryContr
 import { createCategorySchema } from "./schemas/categorySchema";
 import { CreateProductController } from "./controllers/product/createProductController";
 import { ListProductController } from "./controllers/product/listProductController";
+import { DeleteProductController } from "./controllers/product/deleteProductController";
 import {
   createProductSchema,
   listProductsSchema,
@@ -59,6 +60,13 @@ router.get(
   isAuthenticated,
   validateSchema(listProductsSchema),
   new ListProductController().handle
+);
+
+router.delete(
+  "/product",
+  isAuthenticated,
+  isAdmin,
+  new DeleteProductController().handle
 );
 
 export default router;
