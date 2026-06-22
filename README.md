@@ -40,6 +40,8 @@ Backend do sistema de gestão de pizzaria desenvolvido com Node.js, Express 5, P
 | DELETE | `/api/order/remove`     | Sim  | Não   | Remover item do pedido (query: item_id)            |
 | POST   | `/api/order`            | Sim  | Não   | Criar pedido (table, name)                         |
 | PUT    | `/api/order/send`       | Sim  | Não   | Enviar pedido (finalizar rascunho)                 |
+| PUT    | `/api/order/finish`     | Sim  | Não   | Finalizar pedido (fechar conta)                    |
+| DELETE | `/api/order`            | Sim  | Não   | Deletar pedido (soft delete, query: orderId)       |
 | GET    | `/api/order/detail`     | Sim  | Não   | Detalhes do pedido (query: orderId)                |
 | GET    | `/api/orders`           | Sim  | Não   | Listar pedidos (query: draft)                      |
 

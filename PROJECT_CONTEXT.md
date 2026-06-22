@@ -141,8 +141,14 @@ PostgreSQL
 │   │   │   ├── deleteProductController.ts
 │   │   │   └── listProductByCategoryController.ts
 │   │   └── order/
+│   │       ├── addItemController.ts
 │   │       ├── createOrderController.ts
-│   │       └── listOrdersController.ts
+│   │       ├── deleteOrderController.ts
+│   │       ├── detailOrderController.ts
+│   │       ├── finishOrderController.ts
+│   │       ├── listOrdersController.ts
+│   │       ├── removeItemController.ts
+│   │       └── sendOrderController.ts
 │   ├── config/
 │   │   ├── cloudinary.ts             # Configuração do Cloudinary
 │   │   └── multer.ts                 # Configuração do Multer (memoryStorage)
@@ -171,8 +177,14 @@ PostgreSQL
 │   │   │   ├── listProductService.ts
 │   │   │   └── deleteProductService.ts
 │   │   └── order/
+│   │       ├── addItemOrderService.ts
 │   │       ├── createOrderService.ts
-│   │       └── listOrdersService.ts
+│   │       ├── deleteOrderService.ts
+│   │       ├── detailOrderService.ts
+│   │       ├── finishOrderService.ts
+│   │       ├── listOrdersService.ts
+│   │       ├── removeItemService.ts
+│   │       └── sendOrderService.ts
 │   ├── routes.ts                  # Definição de todas as rotas
 │   └── server.ts                  # Entry point do servidor Express
 ├── .agents/                       # Habilidades de agentes de IA (opencode)
@@ -222,7 +234,7 @@ PostgreSQL
 | **Convenção de nomenclatura de campos**  | camelCase (Prisma), mapeados via `@@map` para snake_case nas tabelas |
 | **IDs**                                  | UUID (`@default(uuid())`)                                            |
 | **Timestamps**                           | `createdAt` e `updatedAt` em todas as tabelas                        |
-| **Soft delete**                          | Não implementado                                                     |
+| **Soft delete**                          | Implementado (products, orders via campo `disabled`)                 |
 | **Enum**                                 | `Role` (STAFF, ADMIN) — mapeado nativamente no PostgreSQL como ENUM  |
 
 ### 5.2 Tabelas/Modelos
@@ -461,6 +473,18 @@ Relações:
 | -------------- | ----------------------------------------- | --------------------- |
 | `body.orderId` | `string`, obrigatório                     | `PUT /api/order/send` |
 | `body.name`    | `string`, mínimo 1 caractere, obrigatório | `PUT /api/order/send` |
+
+#### `finishOrderSchema` (`src/schemas/orderSchema.ts`)
+
+| Campo          | Regra                 | Onde é usado            |
+| -------------- | --------------------- | ----------------------- |
+| `body.orderId` | `string`, obrigatório | `PUT /api/order/finish` |
+
+#### `deleteOrderSchema` (`src/schemas/orderSchema.ts`)
+
+| Campo           | Regra                 | Onde é usado        |
+| --------------- | --------------------- | ------------------- |
+| `query.orderId` | `string`, obrigatório | `DELETE /api/order` |
 
 ---
 
@@ -1114,6 +1138,76 @@ Authorization: Bearer <token>
 
 ---
 
+### 9.16 `PUT /api/order/finish` — Finalizar pedido
+
+| Atributo         | Valor                               |
+| ---------------- | ----------------------------------- |
+| **Controller**   | `FinishOrderController`             |
+| **Service**      | `FinishOrderService`                |
+| **Autenticação** | `isAuthenticated`                   |
+| **Validação**    | `validateSchema(finishOrderSchema)` |
+
+**Request:**
+
+```json
+{
+  "orderId": "uuid"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "id": "uuid",
+  "table": 5,
+  "name": "João Silva",
+  "draft": true,
+  "status": true,
+  "createdAt": "2026-06-21T...Z"
+}
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | Dados inválidos (validação Zod) |
+| `400` | Pedido não encontrado |
+| `401` | Token ausente ou inválido |
+
+---
+
+### 9.17 `DELETE /api/order` — Deletar pedido (soft delete)
+
+| Atributo         | Valor                               |
+| ---------------- | ----------------------------------- |
+| **Controller**   | `DeleteOrderController`             |
+| **Service**      | `DeleteOrderService`                |
+| **Autenticação** | `isAuthenticated`                   |
+| **Validação**    | `validateSchema(deleteOrderSchema)` |
+
+**Query Params:**
+
+| Parâmetro | Tipo     | Obrigatório | Descrição      |
+| --------- | -------- | ----------- | -------------- |
+| `orderId` | `string` | Sim         | UUID do pedido |
+
+**Response (200):**
+
+```json
+{
+  "message": "Pedido deletado com sucesso"
+}
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | Pedido não encontrado |
+| `401` | Token ausente ou inválido |
+
+---
+
 ## 10. Bibliotecas e Dependências
 
 ### Dependências de Produção
@@ -1326,8 +1420,8 @@ Authorization: Bearer <token>
 4. ListOrdersController extrai req.query.draft
 5. ListOrdersService.execute({ draft }) é chamado
 6. Service converte draft string para boolean (default false)
-7. Service consulta o banco com where: { draft } (prisma.order.findMany)
-8. Retorna array com { id, table, name, status, draft, createdAt, Items[] }
+7. Service consulta o banco com where: { draft, disabled: false } (prisma.order.findMany) — apenas pedidos não deletados
+8. Retorna array com { id, table, name, status, draft, disabled, createdAt, Items[] }
 9. Controller responde com 200
 ```
 
@@ -1389,6 +1483,36 @@ Authorization: Bearer <token>
 7. Se não existir: erro "Pedido não encontrado"
 8. Service atualiza o pedido (prisma.order.update) com draft: false e name
 9. Retorna { id, table, name, draft, createdAt, updatedAt }
+10. Controller responde com 200
+```
+
+### 12.16 Finalizar Pedido
+
+```
+1. Cliente envia PUT /api/order/finish com { orderId } e Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware validateSchema(finishOrderSchema) valida o campo orderId
+4. FinishOrderController recebe { orderId }
+5. FinishOrderService.execute({ orderId }) é chamado
+6. Service verifica se o pedido existe (prisma.order.findFirst)
+7. Se não existir: erro "Pedido não encontrado"
+8. Service atualiza o pedido (prisma.order.update) com status: true
+9. Retorna { id, table, name, draft, status, createdAt }
+10. Controller responde com 200
+```
+
+### 12.17 Deletar Pedido (Soft Delete)
+
+```
+1. Cliente envia DELETE /api/order?orderId=uuid com Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware validateSchema(deleteOrderSchema) valida o query param orderId
+4. DeleteOrderController extrai req.query.orderId
+5. DeleteOrderService.execute({ orderId }) é chamado
+6. Service verifica se o pedido existe (prisma.order.findFirst)
+7. Se não existir: erro "Pedido não encontrado"
+8. Service desativa o pedido (prisma.order.update com disabled: true)
+9. Retorna { message: "Pedido deletado com sucesso" }
 10. Controller responde com 200
 ```
 
@@ -1491,8 +1615,7 @@ Authorization: Bearer <token>
 | **Adicionar Docker/docker-compose**  | Facilitar setup do ambiente (PostgreSQL + app)                         |
 | **Adicionar rate limiting**          | Prevenir abuso nos endpoints de autenticação                           |
 | **Adicionar refresh token**          | Fluxo de refresh para tokens JWT expirados                             |
-| **Adicionar soft delete**            | Para produtos e categorias (campo `deletedAt`)                         |
-| **Migrar de CommonJS para ESM**      | Para compatibilidade com EcmaScript modules modernos                   |
+| **Adicionar refresh token**          | Fluxo de refresh para tokens JWT expirados                             |
 | **Centralizar mensagens de erro**    | Arquivo de constantes/arquivo i18n para mensagens                      |
 
 ### 14.3 Pontos de Atenção
