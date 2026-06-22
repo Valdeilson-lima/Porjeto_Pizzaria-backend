@@ -961,6 +961,54 @@ Authorization: Bearer <token>
 
 ---
 
+### 9.13 `POST /api/order/add` — Adicionar item ao pedido
+
+| Atributo         | Valor                           |
+| ---------------- | ------------------------------- |
+| **Controller**   | `AddItemController`             |
+| **Service**      | `AddItemOrderService`           |
+| **Autenticação** | `isAuthenticated`               |
+| **Validação**    | `validateSchema(addItemSchema)` |
+
+**Request:**
+
+```json
+{
+  "orderId": "uuid",
+  "productId": "uuid",
+  "amount": 2
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "id": "uuid",
+  "amount": 2,
+  "orderId": "uuid",
+  "productId": "uuid",
+  "createdAt": "2026-06-21T...Z",
+  "product": {
+    "id": "uuid",
+    "name": "Pizza Calabresa",
+    "price": 3500,
+    "description": "Pizza de calabresa com mussarela",
+    "banner": "https://...jpg"
+  }
+}
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | Dados inválidos (validação Zod) |
+| `400` | Pedido não encontrado |
+| `400` | Produto não encontrado |
+| `401` | Token ausente ou inválido |
+
+---
+
 ## 10. Bibliotecas e Dependências
 
 ### Dependências de Produção
@@ -1191,6 +1239,23 @@ Authorization: Bearer <token>
 8. Service deleta o item (prisma.item.delete)
 9. Retorna { message: "Item removido com sucesso." }
 10. Controller responde com 200
+```
+
+### 12.13 Adicionar Item ao Pedido
+
+```
+1. Cliente envia POST /api/order/add com { orderId, productId, amount } e Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware validateSchema(addItemSchema) valida os campos
+4. AddItemController recebe { orderId, productId, amount }
+5. AddItemOrderService.execute({ orderId, productId, amount }) é chamado
+6. Service verifica se o pedido existe (prisma.order.findFirst)
+7. Se não existir: erro "Pedido não encontrado."
+8. Service verifica se o produto existe e está ativo (prisma.product.findFirst com disabled: false)
+9. Se não existir: erro "Produto não encontrado."
+10. Service cria o item no banco (prisma.item.create)
+11. Retorna { id, amount, orderId, productId, createdAt, product }
+12. Controller responde com 200
 ```
 
 ---
