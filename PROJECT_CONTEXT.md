@@ -443,9 +443,15 @@ Relações:
 
 #### `removeItemSchema` (`src/schemas/orderSchema.ts`)
 
-| Campo           | Regra                 | Onde é usado               |
-| --------------- | --------------------- | -------------------------- |
-| `query.item_id` | `string`, obrigatório | `DELETE /api/order/remove` |
+| Campo          | Regra                 | Onde é usado               |
+| -------------- | --------------------- | -------------------------- |
+| `query.itemId` | `string`, obrigatório | `DELETE /api/order/remove` |
+
+#### `detailOrderSchema` (`src/schemas/orderSchema.ts`)
+
+| Campo           | Regra                 | Onde é usado            |
+| --------------- | --------------------- | ----------------------- |
+| `query.orderId` | `string`, obrigatório | `GET /api/order/detail` |
 
 ---
 
@@ -1009,6 +1015,56 @@ Authorization: Bearer <token>
 
 ---
 
+### 9.14 `GET /api/order/detail` — Detalhes do pedido
+
+| Atributo         | Valor                               |
+| ---------------- | ----------------------------------- |
+| **Controller**   | `DetailOrderController`             |
+| **Service**      | `DetailOrderService`                |
+| **Autenticação** | `isAuthenticated`                   |
+| **Validação**    | `validateSchema(detailOrderSchema)` |
+
+**Query Params:**
+
+| Parâmetro | Tipo     | Obrigatório | Descrição      |
+| --------- | -------- | ----------- | -------------- |
+| `orderId` | `string` | Sim         | UUID do pedido |
+
+**Response (200):**
+
+```json
+{
+  "id": "uuid",
+  "table": 5,
+  "name": "João Silva",
+  "status": false,
+  "draft": true,
+  "createdAt": "2026-06-21T...Z",
+  "updatedAt": "2026-06-21T...Z",
+  "Items": [
+    {
+      "id": "uuid",
+      "amount": 2,
+      "product": {
+        "id": "uuid",
+        "name": "Pizza Calabresa",
+        "description": "Pizza de calabresa com mussarela",
+        "price": 3500,
+        "banner": "https://...jpg"
+      }
+    }
+  ]
+}
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | Pedido não encontrado |
+| `401` | Token ausente ou inválido |
+
+---
+
 ## 10. Bibliotecas e Dependências
 
 ### Dependências de Produção
@@ -1256,6 +1312,20 @@ Authorization: Bearer <token>
 10. Service cria o item no banco (prisma.item.create)
 11. Retorna { id, amount, orderId, productId, createdAt, product }
 12. Controller responde com 200
+```
+
+### 12.14 Detalhes do Pedido
+
+```
+1. Cliente envia GET /api/order/detail?orderId=uuid com Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware validateSchema(detailOrderSchema) valida o query param orderId
+4. DetailOrderController extrai req.query.orderId
+5. DetailOrderService.execute({ orderId }) é chamado
+6. Service busca a order por id (prisma.order.findFirst) com itens e produtos
+7. Se não existir: erro "Pedido não encontrado."
+8. Retorna { id, table, name, status, draft, createdAt, updatedAt, Items[] }
+9. Controller responde com 200
 ```
 
 ---
