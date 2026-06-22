@@ -453,6 +453,13 @@ Relações:
 | --------------- | --------------------- | ----------------------- |
 | `query.orderId` | `string`, obrigatório | `GET /api/order/detail` |
 
+#### `sendOrderSchema` (`src/schemas/orderSchema.ts`)
+
+| Campo          | Regra                                     | Onde é usado          |
+| -------------- | ----------------------------------------- | --------------------- |
+| `body.orderId` | `string`, obrigatório                     | `PUT /api/order/send` |
+| `body.name`    | `string`, mínimo 1 caractere, obrigatório | `PUT /api/order/send` |
+
 ---
 
 ## 8. Autenticação e Autorização
@@ -1065,6 +1072,46 @@ Authorization: Bearer <token>
 
 ---
 
+### 9.15 `PUT /api/order/send` — Enviar pedido
+
+| Atributo         | Valor                             |
+| ---------------- | --------------------------------- |
+| **Controller**   | `SendOrderController`             |
+| **Service**      | `SendOrderService`                |
+| **Autenticação** | `isAuthenticated`                 |
+| **Validação**    | `validateSchema(sendOrderSchema)` |
+
+**Request:**
+
+```json
+{
+  "orderId": "uuid",
+  "name": "João Silva"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "id": "uuid",
+  "table": 5,
+  "name": "João Silva",
+  "draft": false,
+  "createdAt": "2026-06-21T...Z",
+  "updatedAt": "2026-06-21T...Z"
+}
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | Dados inválidos (validação Zod) |
+| `400` | Pedido não encontrado |
+| `401` | Token ausente ou inválido |
+
+---
+
 ## 10. Bibliotecas e Dependências
 
 ### Dependências de Produção
@@ -1326,6 +1373,21 @@ Authorization: Bearer <token>
 7. Se não existir: erro "Pedido não encontrado."
 8. Retorna { id, table, name, status, draft, createdAt, updatedAt, Items[] }
 9. Controller responde com 200
+```
+
+### 12.15 Enviar Pedido
+
+```
+1. Cliente envia PUT /api/order/send com { orderId, name } e Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware validateSchema(sendOrderSchema) valida os campos
+4. SendOrderController recebe { orderId, name }
+5. SendOrderService.execute({ orderId, name }) é chamado
+6. Service verifica se o pedido existe (prisma.order.findFirst)
+7. Se não existir: erro "Pedido não encontrado"
+8. Service atualiza o pedido (prisma.order.update) com draft: false e name
+9. Retorna { id, table, name, draft, createdAt, updatedAt }
+10. Controller responde com 200
 ```
 
 ---
