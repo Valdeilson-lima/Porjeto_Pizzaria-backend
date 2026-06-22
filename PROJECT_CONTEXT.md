@@ -433,6 +433,20 @@ Relações:
 | ------------- | ----------------------------------------- | ----------------- |
 | `query.draft` | `string`, opcional, `"true"` ou `"false"` | `GET /api/orders` |
 
+#### `addItemSchema` (`src/schemas/orderSchema.ts`)
+
+| Campo            | Regra                                | Onde é usado          |
+| ---------------- | ------------------------------------ | --------------------- |
+| `body.orderId`   | `string`, obrigatório                | `POST /api/order/add` |
+| `body.productId` | `string`, obrigatório                | `POST /api/order/add` |
+| `body.amount`    | `number`, int, positivo, obrigatório | `POST /api/order/add` |
+
+#### `removeItemSchema` (`src/schemas/orderSchema.ts`)
+
+| Campo           | Regra                 | Onde é usado               |
+| --------------- | --------------------- | -------------------------- |
+| `query.item_id` | `string`, obrigatório | `DELETE /api/order/remove` |
+
 ---
 
 ## 8. Autenticação e Autorização
@@ -916,6 +930,37 @@ Authorization: Bearer <token>
 
 ---
 
+### 9.12 `DELETE /api/order/remove` — Remover item do pedido
+
+| Atributo         | Valor                              |
+| ---------------- | ---------------------------------- |
+| **Controller**   | `RemoveItemController`             |
+| **Service**      | `RemoveItemService`                |
+| **Autenticação** | `isAuthenticated`                  |
+| **Validação**    | `validateSchema(removeItemSchema)` |
+
+**Query Params:**
+
+| Parâmetro | Tipo     | Obrigatório | Descrição    |
+| --------- | -------- | ----------- | ------------ |
+| `item_id` | `string` | Sim         | UUID do item |
+
+**Response (200):**
+
+```json
+{
+  "message": "Item removido com sucesso."
+}
+```
+
+**Erros possíveis:**
+| Status | Condição |
+|--------|----------|
+| `400` | Item não encontrado |
+| `401` | Token ausente ou inválido |
+
+---
+
 ## 10. Bibliotecas e Dependências
 
 ### Dependências de Produção
@@ -1131,6 +1176,21 @@ Authorization: Bearer <token>
 7. Service consulta o banco com where: { draft } (prisma.order.findMany)
 8. Retorna array com { id, table, name, status, draft, createdAt, Items[] }
 9. Controller responde com 200
+```
+
+### 12.12 Remover Item do Pedido
+
+```
+1. Cliente envia DELETE /api/order/remove?item_id=uuid com Authorization: Bearer <token>
+2. Middleware isAuthenticated verifica e decodifica o token
+3. Middleware validateSchema(removeItemSchema) valida o query param item_id
+4. RemoveItemController extrai req.query.item_id
+5. RemoveItemService.execute({ itemId }) é chamado
+6. Service busca o item por id (prisma.item.findFirst)
+7. Se não existir: erro "Item não encontrado."
+8. Service deleta o item (prisma.item.delete)
+9. Retorna { message: "Item removido com sucesso." }
+10. Controller responde com 200
 ```
 
 ---
